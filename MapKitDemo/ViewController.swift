@@ -9,26 +9,16 @@
 import UIKit
 import MapKit
 
-class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate {
+class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate, UITableViewDelegate, UITableViewDataSource {
     @IBOutlet weak var mapView: MKMapView!
     
     var locationManager = CLLocationManager()
     var points = [CLLocationCoordinate2D]()
     var selectedRow = Set<Int>()
     
-    override func viewDidLoad(){
+    override func viewDidLoad() {
         super.viewDidLoad()
-        mapView.delegate = self
-        mapView.showsUserLocation = true
         
-        
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
-        locationManager.startUpdatingLocation()
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(mapLongPress(_:)))
-        longPress.minimumPressDuration = 1.5
-        mapView.addGestureRecognizer(longPress)
         locationManager.delegate = self
     }
     
@@ -43,31 +33,10 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     func requestUserAuthorization() {
         locationManager.requestWhenInUseAuthorization()
     }
-    @objc func mapLongPress(_ recognizer: UIGestureRecognizer) {
-        
-        print("A long press has been detected.")
-        
-        let touchedAt = recognizer.location(in: self.mapView)
-        let touchedAtCoordinate : CLLocationCoordinate2D = mapView.convert(touchedAt, toCoordinateFrom: self.mapView)
-        
-        let newPin = MKPointAnnotation()
-        newPin.coordinate = touchedAtCoordinate
-        mapView.addAnnotation(newPin)
-        
-        
-    }
-    func handleTap(gestureReconizer: UILongPressGestureRecognizer) {
-        
-        let location = gestureReconizer.location(in: mapView)
-        let coordinate = mapView.convert(location,toCoordinateFrom: mapView)
-        let annotation = MKPointAnnotation()
-        annotation.coordinate = coordinate
-        mapView.addAnnotation(annotation)
-    }
     
     func localSearch() {
         let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = "location"
+        request.naturalLanguageQuery = "restaurant"
         request.region = mapView.region
         
         let search = MKLocalSearch(request: request)
@@ -132,13 +101,12 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         return UIColor(red: randomRed, green: randomGreen, blue: randomBlue, alpha: 1.0)
     }
     
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        let location = locations.last! as CLLocation
-        let userLocation:CLLocation = locations[0] as CLLocation
-        let myAnnotation: MKPointAnnotation = MKPointAnnotation()
-        myAnnotation.coordinate = CLLocationCoordinate2DMake(userLocation.coordinate.latitude, userLocation.coordinate.longitude)
-        myAnnotation.title = "Current location"
-        mapView.addAnnotation(myAnnotation)
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        if status == CLAuthorizationStatus.denied {
+            print("Autorize a localização para usar o App")
+        } else if status == CLAuthorizationStatus.authorizedWhenInUse {
+            print("Autorizado!")
+        }
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -148,7 +116,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
             let coord = mapView.convert(position, toCoordinateFrom: self.view)
             points.append(coord)
             
-            if selectedRow.contains(3) {
+            if selectedRow.contains(0) {
                 let ann = MKPointAnnotation()
                 ann.coordinate = coord
                 ann.title = "Meu Pin"
@@ -208,82 +176,29 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         
         return MKCircleRenderer()
     }
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        guard annotation is MKPointAnnotation else { return nil }
-        
-        func showRouteOnMap(pickupCoordinate: CLLocationCoordinate2D, destinationCoordinate: CLLocationCoordinate2D) {
-            
-            let sourcePlacemark = MKPlacemark(coordinate: pickupCoordinate, addressDictionary: nil)
-            let destinationPlacemark = MKPlacemark(coordinate: destinationCoordinate, addressDictionary: nil)
-            
-            let sourceMapItem = MKMapItem(placemark: sourcePlacemark)
-            let destinationMapItem = MKMapItem(placemark: destinationPlacemark)
-            
-            let sourceAnnotation = MKPointAnnotation()
-            
-            if let location = sourcePlacemark.location {
-                sourceAnnotation.coordinate = location.coordinate
-            }
-            
-            let destinationAnnotation = MKPointAnnotation()
-            
-            if let location = destinationPlacemark.location {
-                destinationAnnotation.coordinate = location.coordinate
-            }
-            
-            self.mapView.showAnnotations([sourceAnnotation,destinationAnnotation], animated: true )
-            
-            let directionRequest = MKDirections.Request()
-            directionRequest.source = sourceMapItem
-            directionRequest.destination = destinationMapItem
-            directionRequest.transportType = .automobile
-            
-            let directions = MKDirections(request: directionRequest)
-            
-            directions.calculate {
-                (response, error) -> Void in
-                
-                guard let response = response else {
-                    if let error = error {
-                        print("Error: \(error)")
-                    }
-                    
-                    return
-                }
-                
-                let route = response.routes[0]
-                
-                self.mapView.addOverlay((route.polyline), level: MKOverlayLevel.aboveRoads)
-                
-                let rect = route.polyline.boundingMapRect
-                self.mapView.setRegion(MKCoordinateRegion(rect), animated: true)
-            }
-        }
-        
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            
-            let renderer = MKPolylineRenderer(overlay: overlay)
-            
-            renderer.strokeColor = UIColor(red: 17.0/255.0, green: 147.0/255.0, blue: 255.0/255.0, alpha: 1)
-            
-            renderer.lineWidth = 5.0
-            
-            return renderer
-        }
-        
-        let identifier = "Annotation"
-        var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
-        
-        if annotationView == nil {
-            annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-            annotationView!.canShowCallout = true
-        } else {
-            annotationView!.annotation = annotation
-        }
-        
-        return annotationView
-    }
     
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        let identifier = "Pin"
+        
+        if !(annotation is MKUserLocation) {
+            
+            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+            
+            if annotationView == nil {
+                annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                annotationView?.canShowCallout = true
+                
+                let btn = UIButton(type: .detailDisclosure)
+                annotationView!.rightCalloutAccessoryView = btn
+            } else {
+                annotationView!.annotation = annotation
+            }
+            
+            return annotationView
+        }
+        
+        return nil
+    }
     
     func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
         let ac = UIAlertController(title: "Aviso", message: "Você tocou no Pin!", preferredStyle: .alert)
@@ -291,5 +206,41 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         present(ac, animated: true)
     }
     
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        switch indexPath.row {
+        case 0:
+            if selectedRow.contains(indexPath.row) {
+                selectedRow.remove(indexPath.row)
+            } else {
+                selectedRow.insert(indexPath.row)
+            }
+            tableView.reloadRows(at: [indexPath], with: .automatic)
+        case 1:
+            if points.count >= 2 {
+                requestDirectionsTo(source: points[0], destination: points[1])
+            }
+        case 2:
+            mapView.removeAnnotations(mapView.annotations)
+            mapView.removeOverlays(mapView.overlays)
+            points.removeAll()
+        default:
+            break
+        }
+    }
     
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "item\(indexPath.row)")
+        
+        if selectedRow.contains(indexPath.row) {
+            cell?.accessoryType = .checkmark
+        } else {
+            cell?.accessoryType = .none
+        }
+        
+        return cell!
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return 3
+    }
 }
