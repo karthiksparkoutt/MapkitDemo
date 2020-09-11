@@ -9,7 +9,7 @@
 import UIKit
 import MapKit
 
-class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, UITableViewDelegate, UITableViewDataSource {
+class ViewController: UIViewController, CLLocationManagerDelegate {
 
     @IBOutlet var map: MKMapView!
     
@@ -141,7 +141,8 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
             }
         }
     }
-    
+}
+extension ViewController: MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let overlay = overlay as? MKCircle {
             let circleRenderer = MKCircleRenderer(circle: overlay)
@@ -174,7 +175,6 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
         
         return MKCircleRenderer()
     }
-    
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         let identifier = "Pin"
 
@@ -197,13 +197,13 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
         
         return nil
     }
-    
     func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
         let ac = UIAlertController(title: "pin", message: "location", preferredStyle: .alert)
         ac.addAction(UIAlertAction(title: "OK", style: .default))
         present(ac, animated: true)
     }
-    
+}
+extension ViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         switch indexPath.row {
         case 0:
@@ -225,7 +225,6 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
             break
         }
     }
-    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "item\(indexPath.row)")
 
@@ -237,9 +236,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDele
         
         return cell!
     }
-    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 3
     }
 }
-
